@@ -31,6 +31,7 @@ int main (void){
 
   std::vector<std::string> poem = readPoem();
 
+  std::cout << "In vector:\n" << std::endl;
   for (std::string elem: poem)
   {
     std::cout << elem << std::endl;
