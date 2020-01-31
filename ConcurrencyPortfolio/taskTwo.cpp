@@ -9,7 +9,9 @@
 
 void thread1(std::string whatever)
 {
+  std::chrono::milliseconds timespan(500);
   std::cout << "thread says: " << whatever << std::endl;
+  std::this_thread::sleep_for(timespan);
 }
 
 std::vector <std::string> readPoem()
