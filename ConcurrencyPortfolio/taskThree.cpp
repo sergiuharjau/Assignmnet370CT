@@ -37,16 +37,16 @@ std::vector <std::string> readPoem()
 
 void producer(std::vector<std::string> content)
 {
-  for (std::string elem : content)
+  for (std::string elem : content) //looping through whole poem
   {
-    for (char character : elem)
+    for (char character : elem) //one character at a time
     {
       std::unique_lock<std::mutex> lck(mtx);
 
-      dataBuffer[index] = character ; //putting chars into buffer
+      dataBuffer[index] = character ; //putting character into buffer
       index ++ ;
 
-      //std::cout << "PRODUCING: " << character << std::endl;
+      std::cout << "PRODUCING: " << character << std::endl;
 
       if (index > 0)
       {
@@ -63,7 +63,7 @@ void producer(std::vector<std::string> content)
   std::cout << "Finished producing poem." << std::endl;
   content_exists = false;
   producerFinished = true;
-  cv.notify_all() ;
+  cv.notify_all() ; //hand back control one last time
 }
 
 void consumer()
@@ -78,9 +78,9 @@ void consumer()
 
     if (!content_exists) break;
 
-    //std::cout << "CONSUMING BUFFER:" << std::endl;
+    std::cout << "CONSUMING BUFFER:" << std::endl;
 
-    for (char elem : dataBuffer) //take every element of the dataBuffer
+    for (char elem : dataBuffer) //processing the existing Buffer
     {
       line += elem;
 
@@ -96,7 +96,7 @@ void consumer()
         std::cout << line << std::endl;
     }
 
-    //std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    std::this_thread::sleep_for(std::chrono::milliseconds(25));
 
     consumerFinished = true ;
     producerFinished = false ;
