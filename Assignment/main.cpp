@@ -10,56 +10,88 @@
 #include <mutex>   
 #include <condition_variable>
 
-// char dataBuffer[1];
-// int index = 0 ; //position of buffer index
-
 std::mutex mtx;
 std::condition_variable cv;
 
-// bool producerFinished = false ;
-// bool consumerFinished = false ;
-// bool content_exists = true ;
-
 int sensorTurn = 0; 
 int numberOfSensors = 6; 
-bool sensorFinished = true;
 
-int loops = 5;
-int errorCode = 10;
+int loops = 1;
+bool running = true;
+int lastActivatedSensor = 0;
 
 void sensor(int currentSensor)
 {
     for(int i= 0 ; i < loops ; i++)
     {
         std::unique_lock<std::mutex> lck(mtx);
-        while(sensorTurn != currentSensor ) cv.wait(lck);
+        while(sensorTurn != currentSensor)
+        {
+            // std::cout << "Sensor that is waiting: " << currentSensor << std:: endl;
+            // std::cout << "Current sensor turn: " << sensorTurn << std::endl;
+            cv.wait(lck);
+        }
 
         std::cout << "Sensor: " << currentSensor << std::endl;
+        lastActivatedSensor = currentSensor;
 
-        errorCode = rand() % 10 ;
-        std::cout << "Error code: " << errorCode <<std::endl;
-        switch(errorCode)
+        std::this_thread::sleep_for(std::chrono::milliseconds(250));
+        sensorTurn += 1;  sensorTurn %= numberOfSensors; //to loop back from 6 to 0
+        
+
+        int sensorGenerator = rand() % 10 ;
+        std::cout << "Error code: " << sensorGenerator <<std::endl;
+        switch(sensorGenerator)
         {
             case 0: 
-                std::cout << "Freewheeling" << std::endl;
-                sensorTurn = -10; //puts the sensor on hold, signalling freewheeling
-                break;
+                sensorTurn = -10; 
+                break; //puts the sensor on hold, signalling freewheeling to diagnsosis thread
             case 1: 
-                std::cout << "Sinking" << std::endl;
                 sensorTurn = -11;
                 break;
             case 2: 
-                std::cout << "Blocked" << std::endl;
                 sensorTurn = -12;
                 break;
             default:
                 std::cout << "No issues." << std::endl;
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(250));
-        sensorTurn += 1;  sensorTurn %= numberOfSensors; 
         cv.notify_all();
     }
+}
+
+void diagnosis()
+{
+    while(running)
+    {
+        std::unique_lock<std::mutex> lck(mtx);
+        while (sensorTurn >= 0) cv.wait(lck) ;
+
+        if (sensorTurn == -77) break; //end of program case
+
+        std::cout << "In diagnosis! Issue:" << std::endl;
+
+        switch(sensorTurn)
+        {
+            case -10:
+                std::cout << "Freewheeling" << std::endl;
+                break;
+            case -11:
+                std::cout << "Sinking" << std::endl;
+                break;
+            case -12:
+                std::cout << "Blocked" << std::endl;   
+                break; 
+        }
+
+        std::cout << "Fixing issue. Restarting sensors." << std::endl;
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+        sensorTurn = (lastActivatedSensor+1) %numberOfSensors; //start from where we left off
+        cv.notify_all();
+    }
+
 }
 
 
@@ -72,7 +104,7 @@ int main (void){
     std::thread sensor5(sensor, 4);
     std::thread sensor6(sensor, 5);
 
-    // std::thread wheelDiagnosing();
+    std::thread diagnosisThread(diagnosis);
     // std::thread earthConnection();
 
     // std::thread fixBlock();
@@ -86,6 +118,11 @@ int main (void){
     sensor5.join();
     sensor6.join();
 
+    running = false; //kills remaining threads
+    sensorTurn = -77; //turn_off state
+    cv.notify_all(); //notifies remaining condition variables
+
+    diagnosisThread.join();
 
     return 0;
 }
