@@ -10,121 +10,78 @@
 #include <mutex>   
 #include <condition_variable>
 
-char dataBuffer[1];
-int index = 0 ; //position of buffer index
+// char dataBuffer[1];
+// int index = 0 ; //position of buffer index
 
 std::mutex mtx;
 std::condition_variable cv;
 
-bool producerFinished = false ;
-bool consumerFinished = false ;
-bool content_exists = true ;
+// bool producerFinished = false ;
+// bool consumerFinished = false ;
+// bool content_exists = true ;
 
-std::vector <std::string> readPoem()
+int sensorTurn = 0; 
+int numberOfSensors = 6; 
+bool sensorFinished = true;
+
+int loops = 2;
+
+void sensor(int value)
 {
-  std::ifstream file("poem.txt");
-  std::string str;
-  std::vector <std::string> lines;
- 
-  while (std::getline(file, str))
-  {
-	  if(str.size() > 0)
-	    lines.push_back(str + '\n');
-  }
-
-  return lines;
-}
-
-void producer(std::vector<std::string> content)
-{
-  for (std::string elem : content) //looping through whole poem
-  {
-    for (char character : elem) //one character at a time
+    
+    for(int i= 0 ; i<loops ; i++)
     {
-      std::unique_lock<std::mutex> lck(mtx);
+        std::unique_lock<std::mutex> lck(mtx);
+        while(sensorTurn != value) cv.wait(lck);
 
-      dataBuffer[index] = character ; //putting character into buffer
-      index ++ ;
+        std::cout << "Sensor: " << value << std::endl;
 
-      std::cout << "PRODUCING: " << character << std::endl;
+        int error = rand() % 10 ;
+        std::cout << "Error code: " << error <<std::endl;
+        switch(error)
+        {
+            case 1: 
+                std::cout << "Freewheeling" << std::endl;
+                break;
+            case 2: 
+                std::cout << "Sinking" << std::endl;
+                break;
+            case 3: 
+                std::cout << "Blocked" << std::endl;
+                break;
+            default:
+                std::cout << "No issues." << std::endl;
+        }
 
-      if (index > 0)
-      {
-          index = 0 ; //start back at 0 
-
-          producerFinished = true ; //buffer filled, let consumer read
-          consumerFinished = false ;
-          cv.notify_all() ; // notify consumer to start reading
-        
-          while (!consumerFinished) cv.wait(lck); // wait on Signal by consumer before we continue
-      } 
+        std::this_thread::sleep_for(std::chrono::milliseconds(250));
+        sensorTurn += 1;  sensorTurn %= numberOfSensors; 
+        cv.notify_all();
     }
-  }
-  std::cout << "Finished producing poem." << std::endl;
-  content_exists = false;
-  producerFinished = true;
-  cv.notify_all() ; //hand back control one last time
-}
-
-void consumer()
-{
-  std::string line = "";
-  std::vector<std::string> fullContent;
-
-  while (true)
-  {
-    std::unique_lock<std::mutex> lck(mtx);
-    while (!producerFinished) cv.wait(lck);
-
-    if (!content_exists) break;
-
-    std::cout << "CONSUMING BUFFER:" << std::endl;
-
-    for (char elem : dataBuffer) //processing the existing Buffer
-    {
-      line += elem;
-
-      if (elem == '\n')
-      {
-        fullContent.emplace_back(line); 
-        line = "";
-        std::cout << "\nLine finished. Poem so far:\n" << std::endl;
-        for(std::string x:fullContent) std::cout << x;
-        std::cout << std::endl;
-      }
-      else
-        std::cout << line << std::endl;
-    }
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(25));
-
-    consumerFinished = true ;
-    producerFinished = false ;
-    cv.notify_all(); //hands back control to producer
-  }
-  
-  std::cout << "\nEntire poem has been transferred. Here it is:\n" << std:: endl;
-  for(std::string x:fullContent) std::cout << x;
 }
 
 
 int main (void){
 
-    std::thread sensor1();
-    std::thread sensor2();
-    std::thread sensor3();
-    std::thread sensor4();
-    std::thread sensor5();
-    std::thread sensor6();
+    std::thread sensor1(sensor, 0);
+    std::thread sensor2(sensor, 1);
+    std::thread sensor3(sensor, 2);
+    std::thread sensor4(sensor, 3);
+    std::thread sensor5(sensor, 4);
+    std::thread sensor6(sensor, 5);
 
-    std::thread wheelDiagnosing();
-    std::thread earthConnection();
+    // std::thread wheelDiagnosing();
+    // std::thread earthConnection();
 
-    std::thread fixBlock();
-    std::thread fixFreewheel();
-    std::thread fixSink();
+    // std::thread fixBlock();
+    // std::thread fixFreewheel();
+    // std::thread fixSink();
 
-
+    sensor1.join();
+    sensor2.join();
+    sensor3.join();
+    sensor4.join();
+    sensor5.join();
+    sensor6.join();
 
 
     return 0;
