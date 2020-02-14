@@ -24,30 +24,33 @@ int sensorTurn = 0;
 int numberOfSensors = 6; 
 bool sensorFinished = true;
 
-int loops = 2;
+int loops = 5;
+int errorCode = 10;
 
-void sensor(int value)
+void sensor(int currentSensor)
 {
-    
-    for(int i= 0 ; i<loops ; i++)
+    for(int i= 0 ; i < loops ; i++)
     {
         std::unique_lock<std::mutex> lck(mtx);
-        while(sensorTurn != value) cv.wait(lck);
+        while(sensorTurn != currentSensor ) cv.wait(lck);
 
-        std::cout << "Sensor: " << value << std::endl;
+        std::cout << "Sensor: " << currentSensor << std::endl;
 
-        int error = rand() % 10 ;
-        std::cout << "Error code: " << error <<std::endl;
-        switch(error)
+        errorCode = rand() % 10 ;
+        std::cout << "Error code: " << errorCode <<std::endl;
+        switch(errorCode)
         {
-            case 1: 
+            case 0: 
                 std::cout << "Freewheeling" << std::endl;
+                sensorTurn = -10; //puts the sensor on hold, signalling freewheeling
+                break;
+            case 1: 
+                std::cout << "Sinking" << std::endl;
+                sensorTurn = -11;
                 break;
             case 2: 
-                std::cout << "Sinking" << std::endl;
-                break;
-            case 3: 
                 std::cout << "Blocked" << std::endl;
+                sensorTurn = -12;
                 break;
             default:
                 std::cout << "No issues." << std::endl;
@@ -61,7 +64,7 @@ void sensor(int value)
 
 
 int main (void){
-
+    srand(time(NULL));
     std::thread sensor1(sensor, 0);
     std::thread sensor2(sensor, 1);
     std::thread sensor3(sensor, 2);
