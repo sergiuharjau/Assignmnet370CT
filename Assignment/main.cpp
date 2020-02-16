@@ -9,10 +9,9 @@ std::mutex mtx;
 std::condition_variable cv;
 
 int sensorTurn = 0; 
-int numberOfSensors = 6; 
 int lastActivatedSensor = 0;
 
-int loops = 3;
+int loops = 2;
 bool turnOff = false;
 
 void sensor(int currentSensor)
@@ -23,11 +22,11 @@ void sensor(int currentSensor)
         while(sensorTurn != currentSensor)
             cv.wait(lck);
 
+        std::this_thread::sleep_for(std::chrono::milliseconds(500)); //for nicer terminal display
         std::cout << "Sensor: " << currentSensor << std::endl;
+        
         lastActivatedSensor = currentSensor;
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(250));
-        sensorTurn += 1;  sensorTurn %= numberOfSensors; //to loop back from 6 to 0
+        sensorTurn += 1;  sensorTurn %= 6; //to loop back from 6 to 0
 
         int errorGenerator = rand() % 10; //30% of an issue on every sensor
         switch(errorGenerator)
@@ -56,9 +55,7 @@ void diagnosis()
         while (!((sensorTurn < 0 && sensorTurn > -20) || turnOff))  cv.wait(lck) ;
         if (turnOff) break; //end of program case
 
-        std::cout << "In diagnosis! Issue: " ;
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
+        std::cout << "In diagnosis! Issue: ";
         switch(sensorTurn)
         {
             case -10:
@@ -76,7 +73,6 @@ void diagnosis()
         }
         cv.notify_all();
     }
-
 }
 
 void fixFreewWeel()
@@ -87,12 +83,12 @@ void fixFreewWeel()
         while (!(sensorTurn == -30 || turnOff))  cv.wait(lck);
         if (turnOff) break; //end of program case
 
-        int fixing = rand()%3 ; //30% chance of fixing ourselves
         std::cout << "Trying to fix free wheeling. " << fixing <<std::endl;
+        int fixing = rand()%3 ; //30% chance of fixing ourselves
         if (fixing == 0)
         {
             std::cout<< "Onboard Fix Worked. Restarting sensors." << std::endl;
-            sensorTurn = (lastActivatedSensor+1) %numberOfSensors; //restart sensor, we've fixed the issue
+            sensorTurn = (lastActivatedSensor+1) % 6; //restart sensor, we've fixed the issue
         }
         else
         {
@@ -111,12 +107,12 @@ void fixBlockedWheel()
         while (!(sensorTurn == -31 || turnOff))  cv.wait(lck);
         if (turnOff) break; //end of program case
 
-        int fixing = rand()%4 ; //50% chance of fixing ourselves
         std::cout << "Trying to fix blocked wheel. " << fixing <<std::endl;
+        int fixing = rand()%4 ; //50% chance of fixing ourselves
         if (fixing < 2)
         {
             std::cout<< "Onboard Fix Worked. Restarting sensors." << std::endl;
-            sensorTurn = (lastActivatedSensor+1) %numberOfSensors; //restart sensor, we've fixed the issue
+            sensorTurn = (lastActivatedSensor+1) % 6; //restart sensor, we've fixed the issue
         }
         else
         {
@@ -135,13 +131,12 @@ void fixSinkingWheel()
         while (!(sensorTurn == -32 || turnOff))  cv.wait(lck);
         if (turnOff) break; //end of program case
 
-        int fixing = rand()%10 ; //10% chance of fixing ourselves
         std::cout << "Trying to fix sinking wheel. " << fixing <<std::endl;
-
+        int fixing = rand()%10 ; //10% chance of fixing ourselves
         if (fixing == 0)
         {
             std::cout<< "Onboard Fix Worked. Restarting sensors." << std::endl;
-            sensorTurn = (lastActivatedSensor+1) %numberOfSensors; //restart sensor, we've fixed the issue
+            sensorTurn = (lastActivatedSensor+1) % 6; //restart sensor, we've fixed the issue
         }
         else
         {
@@ -161,14 +156,14 @@ void earthConnection()
         if (turnOff) break; //end of program case
 
         std::cout << "Earth saves the day! Restarting sensors." << std::endl;
-        sensorTurn = (lastActivatedSensor+1) %numberOfSensors; //restart sensor, we've fixed the issue
+        sensorTurn = (lastActivatedSensor+1) % 6; //restart sensor, we've fixed the issue
 
         cv.notify_all();
     }
 }
 
 int main (void){
-    srand(time(NULL));
+    srand(time(NULL)); //provides truly random numbers
 
     std::thread diagnosisThread(diagnosis);
     std::thread earthConnectionThread(earthConnection);
@@ -184,7 +179,7 @@ int main (void){
     std::thread sensor5(sensor, 4); 
     std::thread sensor6(sensor, 5); //sensors stop based on loop variable
 
-    sensor1.join(); 
+    sensor1.join(); //prevents thread from running indefinitely
     sensor2.join(); 
     sensor3.join(); 
     sensor4.join(); 
