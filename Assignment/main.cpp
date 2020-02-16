@@ -1,11 +1,6 @@
 #include <iostream>
-#include <cmath>
 #include <cstdlib>
 #include <thread>
-#include <vector>
-#include <string>
-#include <fstream>
-#include <iterator>
 #include <chrono>
 #include <mutex>   
 #include <condition_variable>
@@ -17,7 +12,7 @@ int sensorTurn = 0;
 int numberOfSensors = 6; 
 int lastActivatedSensor = 0;
 
-int loops = 1;
+int loops = 3;
 bool turnOff = false;
 
 void sensor(int currentSensor)
@@ -34,9 +29,8 @@ void sensor(int currentSensor)
         std::this_thread::sleep_for(std::chrono::milliseconds(250));
         sensorTurn += 1;  sensorTurn %= numberOfSensors; //to loop back from 6 to 0
 
-        int sensorGenerator = rand() % 10 ;
-        //std::cout << "Error code: " << sensorGenerator <<std::endl;
-        switch(sensorGenerator)
+        int errorGenerator = rand() % 10; //30% of an issue on every sensor
+        switch(errorGenerator)
         {
             case 0: 
                 sensorTurn = -10; 
@@ -50,7 +44,6 @@ void sensor(int currentSensor)
             default:
                 std::cout << "No issues." << std::endl;
         }
-
         cv.notify_all();
     }
 }
@@ -81,7 +74,6 @@ void diagnosis()
                 sensorTurn = -32;
                 break; 
         }
-
         cv.notify_all();
     }
 
@@ -96,17 +88,16 @@ void fixFreewWeel()
         if (turnOff) break; //end of program case
 
         int fixing = rand()%3 ; //30% chance of fixing ourselves
-        std::cout << "Fixing free wheel. " << fixing <<std::endl;
+        std::cout << "Trying to fix free wheeling. " << fixing <<std::endl;
         if (fixing == 0)
         {
-            std::cout<< "Freewheeling fixed. Restarting sensors." << std::endl;
+            std::cout<< "Onboard Fix Worked. Restarting sensors." << std::endl;
             sensorTurn = (lastActivatedSensor+1) %numberOfSensors; //restart sensor, we've fixed the issue
         }
         else
         {
-            std::cout<< "Need to ask earth. Continuing." << std::endl;
-            //hand control to Earth
-            sensorTurn = (lastActivatedSensor+1) %numberOfSensors; //restart sensor, we've fixed the issue
+            std::cout<< "Asking earth for answers." << std::endl;
+            sensorTurn = -55; //hand control back to earth
         }
         cv.notify_all();
     }
@@ -121,18 +112,17 @@ void fixBlockedWheel()
         if (turnOff) break; //end of program case
 
         int fixing = rand()%4 ; //50% chance of fixing ourselves
-        std::cout << "Fixing Blocked Wheel. " << fixing <<std::endl;
+        std::cout << "Trying to fix blocked wheel. " << fixing <<std::endl;
         if (fixing < 2)
         {
-            std::cout<< "Blocked Wheel fixed. Restarting sensors." << std::endl;
+            std::cout<< "Onboard Fix Worked. Restarting sensors." << std::endl;
             sensorTurn = (lastActivatedSensor+1) %numberOfSensors; //restart sensor, we've fixed the issue
         }
         else
         {
-            std::cout<< "Need to ask earth. Continuing." << std::endl;
-            //hand control to Earth
-            sensorTurn = (lastActivatedSensor+1) %numberOfSensors; //restart sensor, we've fixed the issue
-        }
+            std::cout<< "Asking earth for answers." << std::endl;
+            sensorTurn = -55; //hand control back to earth
+        } 
         cv.notify_all();
     }
 }
@@ -146,19 +136,32 @@ void fixSinkingWheel()
         if (turnOff) break; //end of program case
 
         int fixing = rand()%10 ; //10% chance of fixing ourselves
-        std::cout << "Fixing sinking wheel. " << fixing <<std::endl;
+        std::cout << "Trying to fix sinking wheel. " << fixing <<std::endl;
 
         if (fixing == 0)
         {
-            std::cout<< "Sinking Wheel fixed. Restarting sensors." << std::endl;
+            std::cout<< "Onboard Fix Worked. Restarting sensors." << std::endl;
             sensorTurn = (lastActivatedSensor+1) %numberOfSensors; //restart sensor, we've fixed the issue
         }
         else
         {
-            std::cout<< "Need to ask earth. Continuing." << std::endl;
-            //hand control to Earth
-            sensorTurn = (lastActivatedSensor+1) %numberOfSensors; //restart sensor, we've fixed the issue
+            std::cout<< "Asking earth for answers." << std::endl;
+            sensorTurn = -55; //hand control back to earth
         }
+        cv.notify_all();
+    }
+}
+
+void earthConnection()
+{
+    while (true)
+    {
+        std::unique_lock<std::mutex> lck(mtx);
+        while (!(sensorTurn == -55 || turnOff))  cv.wait(lck);
+        if (turnOff) break; //end of program case
+
+        std::cout << "Earth saves the day! Restarting sensors." << std::endl;
+        sensorTurn = (lastActivatedSensor+1) %numberOfSensors; //restart sensor, we've fixed the issue
 
         cv.notify_all();
     }
@@ -168,24 +171,24 @@ int main (void){
     srand(time(NULL));
 
     std::thread diagnosisThread(diagnosis);
-    // std::thread earthConnection();
+    std::thread earthConnectionThread(earthConnection);
 
     std::thread fixFreewheelThread(fixFreewWeel);
     std::thread fixBlockedWheelThread(fixBlockedWheel);
     std::thread fixSinkingWheelThread(fixSinkingWheel);
 
-    std::thread sensor1(sensor, 0);
-    std::thread sensor2(sensor, 1);
+    std::thread sensor1(sensor, 0); 
+    std::thread sensor2(sensor, 1); 
     std::thread sensor3(sensor, 2);
-    std::thread sensor4(sensor, 3);
-    std::thread sensor5(sensor, 4);
-    std::thread sensor6(sensor, 5);
+    std::thread sensor4(sensor, 3); 
+    std::thread sensor5(sensor, 4); 
+    std::thread sensor6(sensor, 5); //sensors stop based on loop variable
 
-    sensor1.join();
-    sensor2.join();
-    sensor3.join();
-    sensor4.join();
-    sensor5.join();
+    sensor1.join(); 
+    sensor2.join(); 
+    sensor3.join(); 
+    sensor4.join(); 
+    sensor5.join(); 
     sensor6.join();
 
     turnOff = true; //kills remaining threads
@@ -195,6 +198,7 @@ int main (void){
     fixFreewheelThread.join();
     fixBlockedWheelThread.join();
     fixSinkingWheelThread.join();
+    earthConnectionThread.join();
 
     return 0;
 }
