@@ -83,7 +83,7 @@ void fixFreewWeel()
         while (!(sensorTurn == -30 || turnOff))  cv.wait(lck);
         if (turnOff) break; //end of program case
 
-        std::cout << "Trying to fix free wheeling. " << fixing <<std::endl;
+        std::cout << "Trying to fix free wheeling. " << std::endl;
         int fixing = rand()%3 ; //30% chance of fixing ourselves
         if (fixing == 0)
         {
@@ -107,7 +107,7 @@ void fixBlockedWheel()
         while (!(sensorTurn == -31 || turnOff))  cv.wait(lck);
         if (turnOff) break; //end of program case
 
-        std::cout << "Trying to fix blocked wheel. " << fixing <<std::endl;
+        std::cout << "Trying to fix blocked wheel. " << std::endl;
         int fixing = rand()%4 ; //50% chance of fixing ourselves
         if (fixing < 2)
         {
@@ -131,7 +131,7 @@ void fixSinkingWheel()
         while (!(sensorTurn == -32 || turnOff))  cv.wait(lck);
         if (turnOff) break; //end of program case
 
-        std::cout << "Trying to fix sinking wheel. " << fixing <<std::endl;
+        std::cout << "Trying to fix sinking wheel. " <<std::endl;
         int fixing = rand()%10 ; //10% chance of fixing ourselves
         if (fixing == 0)
         {
@@ -155,6 +155,7 @@ void earthConnection()
         while (!(sensorTurn == -55 || turnOff))  cv.wait(lck);
         if (turnOff) break; //end of program case
 
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
         std::cout << "Earth saves the day! Restarting sensors." << std::endl;
         sensorTurn = (lastActivatedSensor+1) % 6; //restart sensor, we've fixed the issue
 
