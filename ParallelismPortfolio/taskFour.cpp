@@ -5,6 +5,20 @@
 #include <vector>
 #include "stdio.h"
 
+
+std::vector<int> findMidPoint(std::vector<int> particleA, std::vector<int> particleB)
+{
+//Finds midpoint of two given particles
+    std::vector<int> midpoint = {0, 0, 0};
+
+    for (int i = 0 ; i < 3 ; i ++)
+    {
+        midpoint[i] = std::min(particleA[i], particleB[i]) + (abs(particleA[i] - particleB[i]))/2;
+        //std::cout << "Midpoint: " << midpoint[i] << " Particle: " << particleA[i] << " " << particleB[i] << std::endl; 
+    }
+    return midpoint ;
+}
+
 std::vector<std::vector<int>> findClosestPairs(std::vector<std::vector<int>> inputVector)
 {
     std::vector<std::vector<int>> vectorPairs = {};
@@ -51,26 +65,19 @@ std::vector<std::vector<int>> findClosestPairs(std::vector<std::vector<int>> inp
             }
         }
 
-        std::vector<int> pairVector = {i, pair} ;
+        std::vector<int> closestPoints = findMidPoint(inputVector[i], inputVector[pair]);
+        int x = closestPoints[0];
+        int y = closestPoints[1];
+        int z = closestPoints[2];
+
+        std::vector<int> pairVector = {i, pair, x, y, z} ;
+
         vectorPairs.emplace_back(pairVector); //curent i plus the pair we like
         blackList.emplace_back(pair);
         blackList.emplace_back(i);
         //once we find the closest distance, add J particle to "blacklist" since it's already paired
     }
     return vectorPairs;
-}
-
-std::vector<int> findMidPoint(std::vector<int> particleA, std::vector<int> particleB)
-{
-//Finds midpoint of two given particles
-    std::vector<int> midpoint = {0, 0, 0};
-
-    for (int i = 0 ; i < 3 ; i ++)
-    {
-        midpoint[i] = std::min(particleA[i], particleB[i]) + (abs(particleA[i] - particleB[i]))/2;
-        //std::cout << "Midpoint: " << midpoint[i] << " Particle: " << particleA[i] << " " << particleB[i] << std::endl; 
-    }
-    return midpoint ;
 }
 
 int main (void)
@@ -83,40 +90,58 @@ int main (void)
     
     pairs = findClosestPairs(vectors);
     
+
+    std::cout << "STATE OF OUR PAIRED PARTICLES" << std::endl << std::endl ;
+
     for (std::vector<int> pair : pairs)
     {
-        std::cout << "Elements: " << pair[0] << " and "<< pair[1] << std::endl;
+        std::cout <<"Elements: " << pair[0] << " and " << pair[1] << std::endl << "{ ";
         for(int elem: vectors[pair[0]]) std::cout << elem << " " ;
-        std::cout << " with ";
+        std::cout << "} and { ";
         for(int elem: vectors[pair[1]]) std::cout << elem << " " ;
-        std::cout << std::endl;
-        std::vector<int> midpoint = findMidPoint(vectors[pair[0]], vectors[pair[1]]);
-        std::cout << "Midpoint: " << std::endl << midpoint[0] << "\t" << midpoint[1] << "\t" << midpoint[2] << std::endl ;
-        std::cout << "Original Distance from A to midpoint: "  << abs(vectors[pair[0]][0] - midpoint[0]) + abs(vectors[pair[0]][1] - midpoint[1] ) + abs(vectors[pair[0]][2] - midpoint[2]) << std::endl;
-        std::cout << "Original Distance from B to midpoint: " << abs(vectors[pair[1]][0] - midpoint[0]) + abs(vectors[pair[1]][1] - midpoint[1] ) + abs(vectors[pair[1]][2] - midpoint[2]) << std::endl << std::endl;
+        std::cout << "}" <<std::endl;
+
+        std::vector<int> midpoint = {pair[2], pair[3], pair[4]} ;
+
+        std::cout << "  Midpoint: " << std::endl << "  { " << midpoint[0] << " " << midpoint[1] << " " << midpoint[2] << " }"<<std::endl ;
+        std::cout << "    Original Distance from " << pair[0] << " to midpoint: "  << abs(vectors[pair[0]][0] - midpoint[0]) + abs(vectors[pair[0]][1] - midpoint[1] ) + abs(vectors[pair[0]][2] - midpoint[2]) << std::endl;
+        std::cout << "    Original Distance from " << pair[1] << " to midpoint: " << abs(vectors[pair[1]][0] - midpoint[0]) + abs(vectors[pair[1]][1] - midpoint[1] ) + abs(vectors[pair[1]][2] - midpoint[2]) << std::endl << std::endl;
+
+        //std::cout << "DEBUGGING: [PAIR] HOLDS " << pair[0] << " " << pair[1] << " " << pair[2] << " " << pair[3] << " " << pair[4] << std::endl;
     }
 
+    std::vector<int> midpoint = {};
     for (int loop=0; loop<10; loop++)
     {
-        if (loop == 4 || loop == 9)
-            std::cout << std::endl;
+        if (loop==0 || loop == 4 || loop == 9)
+            std::cout << "Step: " << loop << std::endl;
+        
         for (int i=0; i < vectors.size(); i++)
         {
             if (loop == 0 || loop == 4 || loop == 9)
-                std::cout << "Step: " << loop << " || Element: " << i << " || Values: " << vectors[i][0] << "\t" << vectors[i][1] << "\t" << vectors[i][2] << std::endl;
+                std::cout << "  Element: " << i << " || Values: " << vectors[i][0] << "\t" << vectors[i][1] << "\t" << vectors[i][2] << std::endl;
             
             int partner = -1 ;
+            
             for (std::vector<int> pair : pairs)
             {
                 if (pair[0] == i)
+                {
                     partner = pair[1];
+                    //std::cout << "TESTING: " << pair[0] << pair[1] << pair[2] << pair[3] << pair[4] << std::endl;
+                    midpoint = {pair[2], pair[3], pair[4]};
+                }
                 else if (pair[1] == i)
+                {
                     partner = pair[0];
+                    //std::cout << "TESTING: " << pair[2] << std::endl;
+                    midpoint = {pair[2], pair[3], pair[4]};
+                }
             }
             
    
             //std::cout << "Pair: " << i << " " << partner << std::endl;
-            std::vector<int> midpoint = findMidPoint(vectors[i], vectors[partner]); //THIS IS AN ERROR BECAUSE WE NEED TO SAVE THE MIDPOINT, NOT RECOMPUTE IT EVERY TIME
+            //std::vector<int> midpoint = findMidPoint(vectors[i], vectors[partner]); //THIS IS AN ERROR BECAUSE WE NEED TO SAVE THE MIDPOINT, NOT RECOMPUTE IT EVERY TIME
             //std::cout << "Midpoint: " << midpoint[0] << "\t" << midpoint[1] << "\t" << midpoint[2] << std::endl;
                         
                         //current element, random xyz +- 1 based on midpoint position
@@ -125,9 +150,23 @@ int main (void)
             //std::cout << "Step: " << loop << " || Element: " << i << " || Values: " << vectors[i][0] << "\t" << vectors[i][1] << "\t" << vectors[i][2] << std::endl;
         }
 
-
     }
 
+
+    std::cout << std::endl << "STATE OF OUR PAIRED PARTICLES" << std::endl ;
+    for (std::vector<int> pair : pairs)
+    {
+        std::cout << std::endl <<"Elements: " << pair[0] << " and " << pair[1] << std::endl << "{ ";
+        for(int elem: vectors[pair[0]]) std::cout << elem << " " ;
+        std::cout << "} and { ";
+        for(int elem: vectors[pair[1]]) std::cout << elem << " " ;
+        std::cout << "}" <<std::endl;
+        std::vector<int> midpoint = {pair[2], pair[3], pair[4]} ;
+
+        std::cout << "  Midpoint: " << std::endl << "  { " << midpoint[0] << " " << midpoint[1] << " " << midpoint[2] << " }"<<std::endl ;
+        std::cout << "    New Distance from " << pair[0] << " to midpoint: "  << abs(vectors[pair[0]][0] - midpoint[0]) + abs(vectors[pair[0]][1] - midpoint[1] ) + abs(vectors[pair[0]][2] - midpoint[2]) << std::endl;
+        std::cout << "    New Distance from " << pair[1] << " to midpoint: " << abs(vectors[pair[1]][0] - midpoint[0]) + abs(vectors[pair[1]][1] - midpoint[1] ) + abs(vectors[pair[1]][2] - midpoint[2]) << std::endl;
+    }
 
     return 0;
 };
