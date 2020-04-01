@@ -6,15 +6,16 @@
 #include <string> 
 #include "omp.h"
 #include <fstream>
+#include <math.h>
 
-unsigned long get_mem_total() {
+float get_mem_total() {
     std::string token;
     std::ifstream file("/proc/meminfo");
     while(file >> token) {
         if(token == "MemTotal:") {
-            unsigned long mem;
+            float mem;
             if(file >> mem) {
-                return mem*0.000001 ;
+                return floor(mem*0.00001)/10 ;
             } else {
                 return 0;       
             }
@@ -51,7 +52,6 @@ int main(int argc, char** argv) {
   MPI_Init(NULL, NULL);
   char node_name[MPI_MAX_PROCESSOR_NAME];
   int rank,size, namelen;
-  int received = 0;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
   MPI_Get_processor_name(node_name, &namelen);
@@ -61,8 +61,7 @@ int main(int argc, char** argv) {
   int src = 0; //atoi(argv[1]);
 
   int cores = omp_get_num_procs();
-
-  int memory = get_mem_total() ;
+  float memory = get_mem_total() ;
   int speed = get_speed_total() ; 
 
   std::cout << "\nHello, I am node: " << node_name << "\n I have " << cores << " processors. " << std::endl;
@@ -72,15 +71,17 @@ int main(int argc, char** argv) {
           //Send them all to src, base node
   MPI_Send(&cores, 1, MPI_INT, src, 0, MPI_COMM_WORLD);
   MPI_Send(&speed, 1, MPI_INT, src, 1, MPI_COMM_WORLD);
-  MPI_Send(&memory, 1, MPI_INT, src, 2, MPI_COMM_WORLD);
+  MPI_Send(&memory, 1, MPI_FLOAT, src, 2, MPI_COMM_WORLD);
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  std::this_thread::sleep_for(std::chrono::milliseconds(700));
 
   if(rank == src){
     int totalCores = 0 ;
     int totalSpeed = 0 ;
-    int totalMem = 0 ;
+    float totalMem = 0 ;
 
+    float memory = 0;
+    int received = 0;
     
     std::cout << "\n\n" << "IN HEAD NODE. " << node_name<< " \n " << std::endl;
 
@@ -93,11 +94,12 @@ int main(int argc, char** argv) {
         MPI_Recv(&received, 1, MPI_INT, i, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         std::cout << "Received: " << received << " MhH; from node: " << i+2 << std::endl;
         totalSpeed +=received; 
-        MPI_Recv(&received, 1, MPI_INT, i, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        std::cout << "Received: " << received << " GB; from node: " << i+2 << std::endl;
-        totalMem +=received;
+        MPI_Recv(&memory, 1, MPI_FLOAT, i, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        std::cout << "Received: " << memory << " GB; from node: " << i+2 << std::endl;
+        totalMem +=memory;
         
         received = 0 ; // to ensure we get fresh data
+        memory = 0 ;
     }
     std::cout << "\n\nCluster Information: " << std::endl;
     std::cout << "Total Nodes: " << size << std::endl;
