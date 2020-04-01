@@ -100,18 +100,20 @@ int main(int argc, char** argv) {
         
         //std::cout << choice1 << std::endl;
         std::string toSend = wordsVector[choice];
-
-        MPI_Send(toSend.c_str(), toSend.size(), MPI_CHAR, src, 0, MPI_COMM_WORLD); //send to head node                                                     
-        MPI_Send(&choice, 1, MPI_INT, src, 1, MPI_COMM_WORLD);   //index         
+        int sizeString = toSend.size();
+        MPI_Send(&sizeString, 1, MPI_INT, src, 0, MPI_COMM_WORLD);  //send to head node 
+        MPI_Send(toSend.c_str(), toSend.size(), MPI_CHAR, src, 1, MPI_COMM_WORLD);    //string size                               
+        MPI_Send(&choice, 1, MPI_INT, src, 2, MPI_COMM_WORLD);   //index         
 
         std::cout << "SENDING FROM " << i << std::endl;   
         std::cout << " WORD TO SEND " << toSend <<" INDEX: " << choice << std::endl;   
 
         choice = rand()%wordsVector.size();
         toSend = wordsVector[choice];
-
-        MPI_Send(toSend.c_str(), toSend.size(), MPI_CHAR, src, 2, MPI_COMM_WORLD); //send to head node                                                     
-        MPI_Send(&choice, 1, MPI_INT, src, 3, MPI_COMM_WORLD);   //index       
+        sizeString = toSend.size();
+        MPI_Send(&sizeString, 1, MPI_INT, src, 3, MPI_COMM_WORLD);  //send to head node 
+        MPI_Send(toSend.c_str(), toSend.size(), MPI_CHAR, src, 4, MPI_COMM_WORLD); //send to head node                                                     
+        MPI_Send(&choice, 1, MPI_INT, src, 5, MPI_COMM_WORLD);   //index       
 
         std::cout << " WORD TO SEND " << toSend <<" INDEX: " << choice << std::endl;                  
 
@@ -127,20 +129,34 @@ int main(int argc, char** argv) {
       {
         std::cout << i << ". From node " << i << std::endl;
         int index;
-        char *buf = new char[15];
+        int stringSize;
         
-        MPI_Recv(buf, 15 , MPI_CHAR, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        std::string received = buf;
-        MPI_Recv(&index, 1, MPI_INT, i, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        std::cout <<" " << i <<". Word: " << received << std::endl;
-        std::cout << " " << i <<". Index: " << index <<  std::endl;
 
-        MPI_Recv(buf, 15 , MPI_CHAR, i, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        MPI_Recv(&index, 1, MPI_INT, i, 3, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        received = buf;
+        MPI_Recv(&stringSize, 1 , MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        char *buf = new char[stringSize];
+        MPI_Recv(buf, stringSize , MPI_CHAR, i, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        std::string received = buf;
+
+        MPI_Recv(&index, 1, MPI_INT, i, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         std::cout <<" " << i <<". Word: " << received << std::endl;
         std::cout << " " << i <<". Index: " << index <<  std::endl;
-        std::cout << received.size() << std::endl;
+        std::cout << "  " << i <<".  Size it should be: " << stringSize <<  std::endl;
+        std::cout << "  " << i <<".  Size it is: " << received.size()  <<  std::endl;
+        
+
+        stringSize = 0 ;
+
+
+        MPI_Recv(&stringSize, 1 , MPI_INT, i, 3, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        buf = new char[stringSize];
+        MPI_Recv(buf, stringSize , MPI_CHAR, i, 4, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        received = buf;
+
+        MPI_Recv(&index, 1, MPI_INT, i, 5, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        std::cout <<" " << i <<". Word: " << received << std::endl;
+        std::cout << " " << i <<". Index: " << index <<  std::endl;
+        std::cout << "  " << i <<". Size it should be: " << stringSize <<  std::endl;
+        std::cout << "  " << i <<". Size it is: " << received.size()  <<  std::endl;
       }
 
 
