@@ -5,6 +5,45 @@
 #include <thread>
 #include <string> 
 #include "omp.h"
+#include <fstream>
+
+unsigned long get_mem_total() {
+    std::string token;
+    std::ifstream file("/proc/meminfo");
+    while(file >> token) {
+        if(token == "MemTotal:") {
+            unsigned long mem;
+            if(file >> mem) {
+                return mem*0.000001 ;
+            } else {
+                return 0;       
+            }
+        }
+        // ignore rest of the line
+        file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    }
+    return 0; // nothing found
+}
+
+int get_speed_total() {
+    std::string token;
+    std::ifstream file("/proc/cpuinfo");
+    while(file >> token) {
+        if(token == "cpu") {
+            file >> token;
+            if (token == "MHz")
+            {
+              file >> token; 
+              int mhz = 0 ;
+              file >> mhz ; 
+              return mhz;
+            }
+        }
+        // ignore rest of the line
+        file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    }
+    return 0; // nothing found
+}
 
 int main(int argc, char** argv) {
 
@@ -17,45 +56,54 @@ int main(int argc, char** argv) {
   MPI_Comm_size(MPI_COMM_WORLD, &size);
   MPI_Get_processor_name(node_name, &namelen);
 
-  //std::cout <<"Running on node: " << node_name << std::endl;
-
   memset(node_name+namelen,0,MPI_MAX_PROCESSOR_NAME-namelen);
   //int dest = 6;//atoi(argv[2]); // change to command line inputs again if you want to vary these
   int src = 0; //atoi(argv[1]);
 
-  //Everyone sends their details to src 
-
-  // std::string node = node_name ;
-
-  // std::string str = "echo 'Node: " + node + "' >> cpu_info.txt && lscpu | grep 'CPU MHz' >> cpu_info.txt" ;
-  // //str = str + "echo 'n\n' >> cpu_info.txt";
-
-  // const char *command = str.c_str(); 
-  // system(command) ; 
-
-  std::this_thread::sleep_for(std::chrono::milliseconds(500));
   int cores = omp_get_num_procs();
 
-  std::cout << "Hello, I am node: " << node_name << "\n I have " << cores << " processors. " << std::endl;
-  system("lscpu | grep 'CPU MHz'") ;
-  system("grep MemTotal /proc/meminfo") ;
+  int memory = get_mem_total() ;
+  int speed = get_speed_total() ; 
 
+  std::cout << "\nHello, I am node: " << node_name << "\n I have " << cores << " processors. " << std::endl;
+  std::cout << " My cpu speed: " << speed << " Mhz" << std::endl;
+  std::cout << " My memory: " << memory << " GB" << std::endl;
+  
           //Send them all to src, base node
   MPI_Send(&cores, 1, MPI_INT, src, 0, MPI_COMM_WORLD);
+  MPI_Send(&speed, 1, MPI_INT, src, 1, MPI_COMM_WORLD);
+  MPI_Send(&memory, 1, MPI_INT, src, 2, MPI_COMM_WORLD);
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
   if(rank == src){
-    int total = 0 ;
+    int totalCores = 0 ;
+    int totalSpeed = 0 ;
+    int totalMem = 0 ;
+
+    
+    std::cout << "\n\n" << "IN HEAD NODE. " << node_name<< " \n " << std::endl;
+
     for(int i = 0; i < size ; i++){
+
+        std::cout << std::endl;
 	      MPI_Recv(&received, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-     	  std::cout << "In source node received: " << received << " cores; from node: " << i+2 << std::endl;
-        total +=received; 
+        std::cout << "Received: " << received << " cores; from node: " << i+2 << std::endl;
+        totalCores +=received; 
+        MPI_Recv(&received, 1, MPI_INT, i, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        std::cout << "Received: " << received << " MhH; from node: " << i+2 << std::endl;
+        totalSpeed +=received; 
+        MPI_Recv(&received, 1, MPI_INT, i, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        std::cout << "Received: " << received << " GB; from node: " << i+2 << std::endl;
+        totalMem +=received;
+        
         received = 0 ; // to ensure we get fresh data
     }
-    std::cout << "\nTotal cores: " << total << std::endl;
-    std::cout << "\nTotal Nodes: " << size << std::endl;
-    std::cout << "\nNode information: " << std::endl;
-    system("cat cpu_info.txt");
-    system("rm cpu_info.txt");
+    std::cout << "\n\nCluster Information: " << std::endl;
+    std::cout << "Total Nodes: " << size << std::endl;
+    std::cout << "Total Cores: " << totalCores << " cores" << std::endl;
+    std::cout << "Total Speed: " << totalSpeed << " MHz" << std::endl;
+    std::cout << "Total Memory: " << totalMem << " GB" << std::endl;
   }
 
   MPI_Finalize();
