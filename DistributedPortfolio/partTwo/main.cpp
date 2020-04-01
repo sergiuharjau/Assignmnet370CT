@@ -83,7 +83,7 @@ int main(int argc, char** argv) {
             {
                 word = word + " ";
                 wordsVector.emplace_back(word) ;
-                word = " " ;
+                word = "" ;
             }    
         }
          wordsVector.emplace_back(word) ;
