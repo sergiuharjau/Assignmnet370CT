@@ -44,7 +44,7 @@ int main(int argc, char** argv) {
 
         std::cout << "\nThis is the head node. " << node_name << std::endl;
 
-        #pragma omp parallel for schedule (static,1) //If you comment this line, output is even nicer
+//        #pragma omp parallel for schedule (static,1) //If you comment this line, output is even nicer
         for (int i = 0; i < size; i ++)
         {
             int line_to_do = size -i -1;
@@ -56,7 +56,7 @@ int main(int argc, char** argv) {
     std::cout << "\nMoving on to jumbling.\n" << std::endl;
     }
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(700));
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
   
 
