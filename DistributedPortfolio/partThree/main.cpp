@@ -5,45 +5,23 @@
 #include <thread>
 #include <string> 
 #include "omp.h"
+#include <vector>
 #include <fstream>
-#include <math.h>
+#include <algorithm>
 
-float get_mem_total() {
-    std::string token;
-    std::ifstream file("/proc/meminfo");
-    while(file >> token) {
-        if(token == "MemTotal:") {
-            float mem;
-            if(file >> mem) {
-                return floor(mem*0.00001)/10 ;
-            } else {
-                return 0;       
-            }
-        }
-        // ignore rest of the line
-        file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-    }
-    return 0; // nothing found
-}
+std::vector <std::string> readPoem()
+{
+  std::ifstream file("poem.txt");
+  std::string str;
+  std::vector <std::string> lines;
+ 
+  while (std::getline(file, str))
+  {
+	  if(str.size() > 0)
+	    lines.push_back(str);
+  }
 
-int get_speed_total() {
-    std::string token;
-    std::ifstream file("/proc/cpuinfo");
-    while(file >> token) {
-        if(token == "cpu") {
-            file >> token;
-            if (token == "MHz")
-            {
-              file >> token; 
-              int mhz = 0 ;
-              file >> mhz ; 
-              return mhz;
-            }
-        }
-        // ignore rest of the line
-        file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-    }
-    return 0; // nothing found
+  return lines;
 }
 
 int main(int argc, char** argv) {
@@ -57,55 +35,115 @@ int main(int argc, char** argv) {
   MPI_Get_processor_name(node_name, &namelen);
 
   memset(node_name+namelen,0,MPI_MAX_PROCESSOR_NAME-namelen);
-  //int dest = 6;//atoi(argv[2]); // change to command line inputs again if you want to vary these
   int src = 0; //atoi(argv[1]);
 
-  int cores = omp_get_num_procs();
-  float memory = get_mem_total() ;
-  int speed = get_speed_total() ; 
-
-  std::cout << "\nHello, I am node: " << node_name << "\n I have " << cores << " processors. " << std::endl;
-  std::cout << " My cpu speed: " << speed << " Mhz" << std::endl;
-  std::cout << " My memory: " << memory << " GB" << std::endl;
+  std::vector<std::string> wholePoem = readPoem();
   
-          //Send them all to src, base node
-  MPI_Send(&cores, 1, MPI_INT, src, 0, MPI_COMM_WORLD);
-  MPI_Send(&speed, 1, MPI_INT, src, 1, MPI_COMM_WORLD);
-  MPI_Send(&memory, 1, MPI_FLOAT, src, 2, MPI_COMM_WORLD);
+    if (rank == src) //Head node sends out lines
+    {
+
+        std::cout << "\nThis is the head node. " << node_name << std::endl;
+
+        #pragma omp parallel for schedule (static,1) //If you comment this line, output is even nicer
+        for (int i = 0; i < size; i ++)
+        {
+            int line_to_do = size -i -1;
+            std::cout << "\nSending the line: " << wholePoem[line_to_do] << std::endl;
+            std::cout << "To node: " << i << std::endl;
+            MPI_Send(&line_to_do, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+                    //node 0 gets last poem line and so on
+        }
+    std::cout << "\nMoving on to jumbling.\n" << std::endl;
+    }
 
   std::this_thread::sleep_for(std::chrono::milliseconds(700));
 
-  if(rank == src){
-    int totalCores = 0 ;
-    int totalSpeed = 0 ;
-    float totalMem = 0 ;
 
-    float memory = 0;
-    int received = 0;
-    
-    std::cout << "\n\n" << "IN HEAD NODE. " << node_name<< " \n " << std::endl;
 
-    for(int i = 0; i < size ; i++){
+  for (int i=0 ; i < size ; i++)
+  {
+    if(rank == i){   
+        int poemLine = -1;
+                //Head node sends out all the lines
+        MPI_Recv(&poemLine, 1, MPI_INT, src, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        
+        if (poemLine==-1) continue;
+
+        std::cout << i <<". We are node: " << i << std::endl;
+        std::string line = wholePoem[poemLine]; 
+        std::cout  <<" "<< i <<". Original: " <<  line << std::endl;
+
+        std::string word;
+        std::vector<std::string> wordsVector ;
+
+        for(auto individual : line){
+            if (individual != ' ')
+                word = word + individual ; 
+            else
+            {
+                word = word + " ";
+                wordsVector.emplace_back(word) ;
+                word = "" ;
+            }    
+        }
+        wordsVector.emplace_back(word) ;
+
+        std::random_shuffle ( wordsVector.begin(), wordsVector.end() );
+
+        std::cout << " " << i << ". Shuffled: " ;
+        for (std::string word : wordsVector)
+        {
+            std::cout << word;
+        }
+
+        int choice = rand()%wordsVector.size();
+        
+        //std::cout << choice1 << std::endl;
+        std::string toSend = wordsVector[choice];
+
+        MPI_Send(toSend.c_str(), toSend.size(), MPI_CHAR, src, 0, MPI_COMM_WORLD); //send to head node                                                     
+        MPI_Send(&choice, 1, MPI_INT, src, 1, MPI_COMM_WORLD);   //index         
+
+        std::cout << "SENDING FROM " << i << std::endl;   
+        std::cout << " WORD TO SEND " << toSend <<" INDEX: " << choice << std::endl;   
+
+        choice = rand()%wordsVector.size();
+        toSend = wordsVector[choice];
+
+        MPI_Send(toSend.c_str(), toSend.size(), MPI_CHAR, src, 2, MPI_COMM_WORLD); //send to head node                                                     
+        MPI_Send(&choice, 1, MPI_INT, src, 3, MPI_COMM_WORLD);   //index       
+
+        std::cout << " WORD TO SEND " << toSend <<" INDEX: " << choice << std::endl;                  
 
         std::cout << std::endl;
-	      MPI_Recv(&received, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        std::cout << "Received: " << received << " cores; from node: " << i+2 << std::endl;
-        totalCores +=received; 
-        MPI_Recv(&received, 1, MPI_INT, i, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        std::cout << "Received: " << received << " MhH; from node: " << i+2 << std::endl;
-        totalSpeed +=received; 
-        MPI_Recv(&memory, 1, MPI_FLOAT, i, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        std::cout << "Received: " << memory << " GB; from node: " << i+2 << std::endl;
-        totalMem +=memory;
-        
-        received = 0 ; // to ensure we get fresh data
-        memory = 0 ;
+      }
     }
-    std::cout << "\n\nCluster Information: " << std::endl;
-    std::cout << "Total Nodes: " << size << std::endl;
-    std::cout << "Total Cores: " << totalCores << " cores" << std::endl;
-    std::cout << "Total Speed: " << totalSpeed << " MHz" << std::endl;
-    std::cout << "Total Memory: " << totalMem << " GB" << std::endl;
+    
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+    std::cout << "HELLO I AM NODE" << rank << std::endl;
+    if (rank == src)
+    {
+      for (int i=0; i < size ; i++)
+      {
+        std::cout << i << ". From node " << i << std::endl;
+        int index;
+        char *buf = new char[15];
+        
+        MPI_Recv(buf, 15 , MPI_CHAR, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        std::string received = buf;
+        MPI_Recv(&index, 1, MPI_INT, i, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        std::cout <<" " << i <<". Word: " << received << std::endl;
+        std::cout << " " << i <<". Index: " << index <<  std::endl;
+
+        MPI_Recv(buf, 15 , MPI_CHAR, i, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Recv(&index, 1, MPI_INT, i, 3, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        received = buf;
+        std::cout <<" " << i <<". Word: " << received << std::endl;
+        std::cout << " " << i <<". Index: " << index <<  std::endl;
+        std::cout << received.size() << std::endl;
+      }
+
+
   }
 
   MPI_Finalize();
