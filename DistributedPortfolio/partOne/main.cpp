@@ -81,10 +81,11 @@ int main(int argc, char** argv) {
         float memory = 0;
         int received = 0;
         
-        std::cout << "\n\n" << "IN HEAD NODE. " << node_name<< " \n " << std::endl << std::endl;
+        std::cout << "\n\n" << "IN HEAD NODE. " << node_name<< " \n " << std::endl;
 
 // COLLECT DATA
         for(int i = 0; i < size ; i++){
+            std::cout << std::endl;
 
             MPI_Recv(&received, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
             std::cout << "Received: " << received << " cores; from node: " << i+2 << std::endl;
@@ -106,7 +107,7 @@ int main(int argc, char** argv) {
         std::cout << "Total Nodes: " << size << std::endl;
         std::cout << "Total Cores: " << totalCores << " cores" << std::endl;
         std::cout << "Total Speed: " << totalSpeed << " MHz" << std::endl;
-        std::cout << "Total Memory: " << totalMem << " GB" << std::endl;
+        std::cout << "Total Memory: " << totalMem << " GB" << std::endl << std::endl;
     }
     MPI_Finalize();
 }
