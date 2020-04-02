@@ -173,11 +173,11 @@ int main (void){
     std::thread fixBlockedWheelThread(fixBlockedWheel);
     std::thread fixSinkingWheelThread(fixSinkingWheel);
 
-    std::thread sensor1(sensor, 0); 
-    std::thread sensor2(sensor, 1); 
+    std::thread sensor1(sensor, 0);
+    std::thread sensor2(sensor, 1);
     std::thread sensor3(sensor, 2);
-    std::thread sensor4(sensor, 3); 
-    std::thread sensor5(sensor, 4); 
+    std::thread sensor4(sensor, 3);
+    std::thread sensor5(sensor, 4);
     std::thread sensor6(sensor, 5); //sensors stop based on loop variable
 
     sensor1.join(); //prevents thread from running indefinitely
