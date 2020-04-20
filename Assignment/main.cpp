@@ -11,7 +11,7 @@ std::condition_variable cv;
 int sensorTurn = 0; 
 int lastActivatedSensor = 0;
 
-int loops = 2;
+int loops = 5;
 bool turnOff = false;
 
 void sensor(int currentSensor)
@@ -19,8 +19,7 @@ void sensor(int currentSensor)
     for(int i= 0 ; i < loops ; i++)
     {
         std::unique_lock<std::mutex> lck(mtx);
-        while(sensorTurn != currentSensor)
-            cv.wait(lck);
+        while(sensorTurn != currentSensor)  cv.wait(lck);
 
         std::this_thread::sleep_for(std::chrono::milliseconds(500)); //for nicer terminal display
         std::cout << "Sensor: " << currentSensor << std::endl;
@@ -41,7 +40,7 @@ void sensor(int currentSensor)
                 sensorTurn = -12;
                 break;
             default:
-                std::cout << "No issues." << std::endl;
+                std::cout << "  No issues." << std::endl;
         }
         cv.notify_all();
     }
@@ -55,7 +54,7 @@ void diagnosis()
         while (!((sensorTurn < 0 && sensorTurn > -20) || turnOff))  cv.wait(lck) ;
         if (turnOff) break; //end of program case
 
-        std::cout << "In diagnosis! Issue: ";
+        std::cout << "  In diagnosis! Issue: ";
         switch(sensorTurn)
         {
             case -10:
@@ -69,7 +68,7 @@ void diagnosis()
             case -12:
                 std::cout << "Sinking" << std::endl; 
                 sensorTurn = -32;
-                break; 
+                break;
         }
         cv.notify_all();
     }
@@ -83,16 +82,16 @@ void fixFreewWeel()
         while (!(sensorTurn == -30 || turnOff))  cv.wait(lck);
         if (turnOff) break; //end of program case
 
-        std::cout << "Trying to fix free wheeling. " << std::endl;
+        std::cout << "      Trying to fix free wheeling. " << std::endl;
         int fixing = rand()%3 ; //30% chance of fixing ourselves
         if (fixing == 0)
         {
-            std::cout<< "Onboard Fix Worked. Restarting sensors." << std::endl;
+            std::cout<< "           Onboard Fix Worked. Restarting sensors." << std::endl;
             sensorTurn = (lastActivatedSensor+1) % 6; //restart sensor, we've fixed the issue
         }
         else
         {
-            std::cout<< "Asking earth for answers." << std::endl;
+            std::cout<< "           Asking earth for answers." << std::endl;
             sensorTurn = -55; //hand control back to earth
         }
         cv.notify_all();
@@ -107,16 +106,16 @@ void fixBlockedWheel()
         while (!(sensorTurn == -31 || turnOff))  cv.wait(lck);
         if (turnOff) break; //end of program case
 
-        std::cout << "Trying to fix blocked wheel. " << std::endl;
+        std::cout << "      Trying to fix blocked wheel. " << std::endl;
         int fixing = rand()%4 ; //50% chance of fixing ourselves
         if (fixing < 2)
         {
-            std::cout<< "Onboard Fix Worked. Restarting sensors." << std::endl;
+            std::cout<< "           Onboard Fix Worked. Restarting sensors." << std::endl;
             sensorTurn = (lastActivatedSensor+1) % 6; //restart sensor, we've fixed the issue
         }
         else
         {
-            std::cout<< "Asking earth for answers." << std::endl;
+            std::cout<< "           Asking earth for answers." << std::endl;
             sensorTurn = -55; //hand control back to earth
         } 
         cv.notify_all();
@@ -131,16 +130,16 @@ void fixSinkingWheel()
         while (!(sensorTurn == -32 || turnOff))  cv.wait(lck);
         if (turnOff) break; //end of program case
 
-        std::cout << "Trying to fix sinking wheel. " <<std::endl;
+        std::cout << "      Trying to fix sinking wheel. " <<std::endl;
         int fixing = rand()%10 ; //10% chance of fixing ourselves
         if (fixing == 0)
         {
-            std::cout<< "Onboard Fix Worked. Restarting sensors." << std::endl;
+            std::cout<< "       Onboard Fix Worked. Restarting sensors." << std::endl;
             sensorTurn = (lastActivatedSensor+1) % 6; //restart sensor, we've fixed the issue
         }
         else
         {
-            std::cout<< "Asking earth for answers." << std::endl;
+            std::cout<< "           Asking earth for answers." << std::endl;
             sensorTurn = -55; //hand control back to earth
         }
         cv.notify_all();
@@ -156,7 +155,7 @@ void earthConnection()
         if (turnOff) break; //end of program case
 
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        std::cout << "Earth saves the day! Restarting sensors." << std::endl;
+        std::cout << "                  Earth saves the day! Restarting sensors." << std::endl;
         sensorTurn = (lastActivatedSensor+1) % 6; //restart sensor, we've fixed the issue
 
         cv.notify_all();
